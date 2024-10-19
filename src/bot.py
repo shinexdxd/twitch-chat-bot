@@ -156,6 +156,49 @@ class TwitchBot:
                     self.send_message(f"@{username} You don't have permission to use this command.")
             else:
                 self.send_message(f"@{username} Invalid task command. Type !task for help.")
+        elif message.startswith('!timer'):
+            if username != self.admin_user:
+                self.send_message(f"@{username} Sorry, only the admin can use timer commands.")
+                return
+
+            parts = message.split()
+            if len(parts) == 1:
+                # User just typed !timer, show help message
+                help_message = ("Timer commands: !timer start | !timer stop | !timer pause | "
+                                "!timer resume | !timer set <type> <minutes>")
+                self.send_message(f"@{username} {help_message}")
+            elif len(parts) >= 2:
+                command = parts[1]
+                if command == 'start':
+                    self.task_manager.start_timer()
+                    timer_type = self.task_manager.current_phase
+                    duration = self.task_manager.get_duration()
+                    self.send_message(f"@{username} {timer_type.capitalize()} timer started for {duration} minutes!")
+                elif command == 'stop':
+                    self.task_manager.stop_timer()
+                    self.send_message(f"@{username} Timer stopped.")
+                elif command == 'pause':
+                    self.task_manager.pause_timer()
+                    self.send_message(f"@{username} Timer paused.")
+                elif command == 'resume':
+                    self.task_manager.resume_timer()
+                    self.send_message(f"@{username} Timer resumed.")
+                elif command == 'set' and len(parts) == 4:
+                    timer_type = parts[2]
+                    try:
+                        duration = int(parts[3])
+                        if timer_type in ['focus', 'short', 'long']:
+                            self.task_manager.set_timer_duration(timer_type, duration)
+                            self.send_message(f"@{username} {timer_type.capitalize()} timer set to {duration} minutes.")
+                        else:
+                            self.send_message(f"@{username} Invalid timer type. Use 'focus', 'short', or 'long'.")
+                    except ValueError:
+                        self.send_message(f"@{username} Invalid duration. Please use a number of minutes.")
+                else:
+                    self.send_message(f"@{username} Invalid timer command. Type !timer for help.")
+        else:
+            # Handle other commands or messages
+            pass  # Add this line to handle the case when no specific command is matched
 
 if __name__ == "__main__":
     bot = TwitchBot()

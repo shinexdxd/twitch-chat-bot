@@ -46,6 +46,8 @@ class TaskManager:
         # Initialize pygame mixer for sound playback
         pygame.mixer.init()
         self.complete_sound = pygame.mixer.Sound(os.path.join('sounds', 'complete.mp3'))
+        self.volume = 1.0  # Default volume (100%)
+        self.set_volume(self.volume)  # Set initial volume
         self.console = Console()
 
     def load_data(self):
@@ -232,7 +234,7 @@ class TaskManager:
         
         formatted_tasks = []
         for task_id, task in tasks.items():
-            formatted_task = f"☐ {task_id}: {task['description']}"
+            formatted_task = f"{task_id}: {task['description']}"
             formatted_tasks.append(formatted_task)
         
         return " || ".join(formatted_tasks)
@@ -366,6 +368,13 @@ class TaskManager:
             self.long_break_duration = duration
         else:
             raise ValueError("Invalid timer type")
+
+    def set_volume(self, volume):
+        self.volume = max(0.0, min(1.0, volume))  # Ensure volume is between 0 and 1
+        self.complete_sound.set_volume(self.volume)
+
+    def get_volume(self):
+        return int(self.volume * 100)  # Return volume as a percentage
 
 def get_big_digits():
     return [

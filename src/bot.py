@@ -196,6 +196,28 @@ class TwitchBot:
                         self.send_message(f"@{username} Invalid duration. Please use a number of minutes.")
                 else:
                     self.send_message(f"@{username} Invalid timer command. Type !timer for help.")
+        elif message.startswith('!volume'):
+            if username != self.admin_user:
+                self.send_message(f"@{username} Sorry, only the admin can change the volume.")
+                return
+
+            parts = message.split()
+            if len(parts) == 1:
+                # User just typed !volume, show current volume
+                current_volume = self.task_manager.get_volume()
+                self.send_message(f"@{username} Current volume is set to {current_volume}%")
+            elif len(parts) == 2:
+                try:
+                    new_volume = int(parts[1])
+                    if 0 <= new_volume <= 100:
+                        self.task_manager.set_volume(new_volume / 100)
+                        self.send_message(f"@{username} Volume set to {new_volume}%")
+                    else:
+                        self.send_message(f"@{username} Volume must be between 0 and 100")
+                except ValueError:
+                    self.send_message(f"@{username} Invalid volume. Please use a number between 0 and 100")
+            else:
+                self.send_message(f"@{username} Usage: !volume or !volume <0-100>")
         else:
             # Handle other commands or messages
             pass  # Add this line to handle the case when no specific command is matched

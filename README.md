@@ -51,6 +51,11 @@ This Twitch bot helps manage tasks and provides a Pomodoro timer for streamers a
 - `!timer set <type> <minutes>`: Set the duration for a timer type
   - Types: `focus`, `short`, `long`
 
+### Volume Control (Admin only)
+
+- `!volume`: Display current volume level
+- `!volume <0-100>`: Set the volume level (0-100%)
+
 ### Other Commands
 
 - `!hi`: Bot responds with a greeting
@@ -72,16 +77,17 @@ This Twitch bot helps manage tasks and provides a Pomodoro timer for streamers a
   - User stats table showing daily and all-time completed tasks
   - Today's open tasks list
 - Sound notifications for completed Pomodoro sessions
+- Volume control for sound notifications
 - Automatic progression through Pomodoro cycles (focus -> short break -> focus -> ... -> long break)
 - Persistent storage of tasks and user stats in JSON format
-- Admin-only commands for managing the Pomodoro timer and wiping user tasks
+- Admin-only commands for managing the Pomodoro timer, wiping user tasks, and controlling volume
 
 ## Technical Details
 
 - Uses Python's `socket` library for Twitch IRC connection
 - Multithreaded design for simultaneous bot operation and task display
 - Utilizes the `rich` library for creating an attractive console interface
-- Implements `pygame` for sound playback
+- Implements `pygame` for sound playback and volume control
 
 ## Contributing
 

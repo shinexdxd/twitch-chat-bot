@@ -27,6 +27,7 @@ This Twitch bot helps manage tasks and provides a Pomodoro timer for streamers a
 
 4. Run the bot:
    ```
+   cd src   
    python src/bot.py
    ```
 

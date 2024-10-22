@@ -63,11 +63,25 @@ This Twitch bot helps manage tasks and provides a Pomodoro timer for streamers a
 
 ## Features
 
-- Task management system
-- Pomodoro timer with customizable durations
-- Daily stats reset and task cleanup
-- Lurker tracking
-- Visual task dashboard (displayed in the console)
+- Task management system with unique IDs for each task
+- Pomodoro timer with customizable durations for focus, short breaks, and long breaks
+- Daily stats reset and task cleanup at midnight
+- Lurker tracking with daily reset
+- Visual task dashboard displayed in the console, including:
+  - Pomodoro timer status with large digital clock display
+  - User stats table showing daily and all-time completed tasks
+  - Today's open tasks list
+- Sound notifications for completed Pomodoro sessions
+- Automatic progression through Pomodoro cycles (focus -> short break -> focus -> ... -> long break)
+- Persistent storage of tasks and user stats in JSON format
+- Admin-only commands for managing the Pomodoro timer and wiping user tasks
+
+## Technical Details
+
+- Uses Python's `socket` library for Twitch IRC connection
+- Multithreaded design for simultaneous bot operation and task display
+- Utilizes the `rich` library for creating an attractive console interface
+- Implements `pygame` for sound playback
 
 ## Contributing
 

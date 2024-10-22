@@ -6,6 +6,15 @@ from datetime import datetime, date, timedelta
 from collections import Counter
 from textwrap import wrap
 import pygame
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.layout import Layout
+from rich.text import Text
+from rich import box
+from rich.padding import Padding
+from rich.align import Align
+from rich.style import Style
 
 class TaskManager:
     def __init__(self, file_path='tasks.json'):
@@ -33,6 +42,7 @@ class TaskManager:
         # Initialize pygame mixer for sound playback
         pygame.mixer.init()
         self.complete_sound = pygame.mixer.Sound(os.path.join('sounds', 'complete.mp3'))
+        self.console = Console()
 
     def load_data(self):
         if os.path.exists(self.file_path):
@@ -108,79 +118,104 @@ class TaskManager:
 
     def display_tasks(self):
         while True:
-            os.system('clear' if os.name == 'posix' else 'cls')  # Clear the terminal
-            today = date.today()
+            self.console.clear()
+            layout = Layout()
             
-            # Set column widths
-            column_width = 59  # Reduced by 1 to account for separator
-            total_width = column_width * 2 + 3  # 3 for the left, middle, and right borders
-            max_description_length = 20  # Maximum length for task descriptions
+            layout.split_column(
+                Layout(name="top_padding", size=2),
+                Layout(name="main_content")
+            )
+            
+            layout["main_content"].split_column(
+                Layout(name="header", size=8),  # Reduced size from default
+                Layout(name="body"),
+                Layout(name="footer", size=7)  # Adjusted size for footer
+            )
+            layout["main_content"]["body"].split_row(
+                Layout(name="stats", ratio=3),
+                Layout(name="tasks", ratio=7)
+            )
 
-            # Print Pomodoro timer status
-            print("\n" + self.get_timer_status())
-            print("\n" + "=" * total_width)  # Separator line
+            # Header
+            timer_status = self.get_timer_status()
+            layout["main_content"]["header"].update(Panel(
+                Align.center(timer_status),
+                title="🍅 Pomodoro 🍅",
+                border_style="bold",
+                padding=(1, 1),
+                title_align="center"
+            ))
 
-            # Print header with emojis
-            print()
-            print(self.center_text("🍅 Pomodoro Task Dashboard 🍅", total_width))
-            
-            # Prepare the left column (stats)
-            left_column = []
-            left_column.append(self.center_text("User Stats", column_width))
-            left_column.append("-" * column_width)
-            
-            # Only include users with at least one completed task today
-            daily_stats = Counter({user: stats['daily'] for user, stats in self.user_stats.items() if stats['daily'] > 0})
-            total_stats = Counter({user: stats['total'] for user, stats in self.user_stats.items() if stats['total'] > 0})
-            
-            left_column.append(self.center_text("Top 5 Users (Today)", column_width))
-            if daily_stats:
-                for i, (user, count) in enumerate(daily_stats.most_common(5), 1):
-                    left_column.append(f"  {i}. {user}: {count}".ljust(column_width))
-            else:
-                left_column.append(self.center_text("-- No tasks completed today --", column_width))
-            
-            left_column.append(" " * column_width)
-            left_column.append(self.center_text("Top 5 Users (All-time)", column_width))
-            if total_stats:
-                for i, (user, count) in enumerate(total_stats.most_common(5), 1):
-                    left_column.append(f"  {i}. {user}: {count}".ljust(column_width))
-            else:
-                left_column.append(self.center_text("No tasks completed yet", column_width))
-            
+            # Stats
+            stats_table = Table(show_header=True, header_style="bold magenta", show_lines=False, box=None, padding=(0, 1))
+            stats_table.add_column("User", style="dim", width=22)  # Increased width
+            stats_table.add_column("Today", justify="right", width=12)  # Increased width
+            stats_table.add_column("All-time", justify="right", width=12)  # Increased width
+
+            daily_stats = {user: stats['daily'] for user, stats in self.user_stats.items() if stats['daily'] > 0}
+            total_stats = {user: stats['total'] for user, stats in self.user_stats.items() if stats['total'] > 0}
+
+            for user in set(daily_stats.keys()) | set(total_stats.keys()):
+                stats_table.add_row(user, str(daily_stats.get(user, 0)), str(total_stats.get(user, 0)))
+
             total_completed = sum(stats['total'] for stats in self.user_stats.values())
-            left_column.append(" " * column_width)
-            left_column.append(self.center_text(f"Total tasks completed: {total_completed}", column_width))
-            
-            # Prepare the right column (tasks)
-            right_column = []
-            right_column.append(self.center_text("Today's Tasks", column_width))
-            right_column.append("-" * column_width)
-            for task_id, task in self.tasks.items():
-                if task["date"] == today:
-                    status = "X" if task["completed"] else " "
-                    description = task['description']
-                    if len(description) > max_description_length:
-                        description = description[:max_description_length-3] + "..."
-                    task_line = f"[{status}] {task_id}: {description} ({task['user']})"
-                    right_column.append(task_line.ljust(column_width))
+            stats_panel = Panel(
+                stats_table,
+                title="User Stats",
+                subtitle=f"Total tasks completed (All-time): {total_completed}",  # Updated this line
+                border_style="bold green"
+            )
+            layout["main_content"]["body"]["stats"].update(stats_panel)
 
-            # Combine columns and display
-            max_lines = max(len(left_column), len(right_column))
-            left_column += [' ' * column_width] * (max_lines - len(left_column))
-            right_column += [' ' * column_width] * (max_lines - len(right_column))
+            # Tasks
+            tasks_table = Table(show_header=True, header_style="bold cyan", show_lines=False, box=None, padding=(0, 1))
+            tasks_table.add_column("ID", style="bright_yellow", width=10)  # Changed from "bright_black" to "bright_yellow"
+            tasks_table.add_column("Description", style="bright_white", width=60, no_wrap=True)
+            tasks_table.add_column("User", style="bright_blue", width=20)
+
+            today = date.today()
+            for task_id, task in self.tasks.items():
+                if task["date"] == today and not task["completed"]:
+                    # Truncate description if it's too long
+                    description = task['description'][:57] + "..." if len(task['description']) > 60 else task['description']
+                    tasks_table.add_row(
+                        task_id,
+                        description,
+                        task['user']
+                    )
+
+            tasks_panel = Panel(
+                tasks_table,
+                title="Today's Incomplete Tasks",
+                border_style="bold cyan",
+                title_align="center"
+            )
+            layout["main_content"]["body"]["tasks"].update(tasks_panel)
+
+            # Footer
+            footer_lines = [
+                "🎉 Keep up the great work! 🎉",
+                "",  # This adds a blank line
+                "📝 Use !task command to manage your tasks 📝"
+            ]
+            footer_text = Text("\n".join(footer_lines), justify="center")
+            footer_text.stylize("bold green", 0, len(footer_lines[0]))
+            footer_text.stylize("italic cyan", len(footer_lines[0]) + len(footer_lines[1]) + 2, len(footer_text))
             
-            print("+" + "-" * column_width + "+" + "-" * column_width + "+")
-            for left, right in zip(left_column, right_column):
-                print(f"|{left}|{right}|")
-            print("+" + "-" * column_width + "+" + "-" * column_width + "+")
+            # Add padding to move text down and center it horizontally
+            # Changed top padding from 2 to 1 to move text up one line
+            padded_footer = Align.center(
+                Padding(footer_text, (1, 0, 0, 0)),  # 1 line padding at the top (changed from 2)
+                vertical="middle"
+            )
             
-            # Print footer with emojis
-            print()            
-            print(self.center_text("🎉 Keep up the great work! 🎉", total_width))
-            print()
-            print(self.center_text("📝 Use !task command to manage your tasks 📝", total_width))
-            
+            layout["main_content"]["footer"].update(Panel(
+                padded_footer,
+                border_style="bold",
+                expand=True
+            ))
+
+            self.console.print(layout)
             time.sleep(1)  # Update every second
 
     def format_task_list(self, tasks):
@@ -242,11 +277,9 @@ class TaskManager:
         self.check_and_reset_pomodoros()
         
         status_lines = []
-        status_lines.append("🍅 Pomodoro Timer 🍅")
-        status_lines.append("")
         
         if not self.timer_start:
-            status_lines.append("⏸️ No active timer")
+            status_lines.append(Text("⏸️ No active timer", style="bold"))
         else:
             if self.timer_paused:
                 remaining = self.timer_end - self.timer_pause_start
@@ -255,20 +288,20 @@ class TaskManager:
             
             if remaining.total_seconds() <= 0:
                 self.next_phase()
-                status_lines.append(f"🔄 {self.current_phase.capitalize()} time started!")
-                status_lines.append(f"⏱️ Duration: {self.get_duration()} minutes")
-                # Note: We don't need to play the sound here as it's handled in next_phase()
+                status_lines.append(Text(f"🔄 {self.current_phase.capitalize()} time started!", style="bold"))
+                status_lines.append(Text(f"⏱️ Duration: {self.get_duration()} minutes", style="bold"))
             else:
                 minutes, seconds = divmod(int(remaining.total_seconds()), 60)
                 timer_display = f"{minutes:02d}:{seconds:02d}"
-                status_lines.append(f"⏳ {self.current_phase.capitalize()}")
-                status_lines.append(f"⏱️ {timer_display}")
+                status_lines.append(Text(f"⏳ {self.current_phase.capitalize()}", style="bold"))
+                timer_text = Text(f"⏱️ {timer_display}", style="bold cyan")
+                timer_text.stylize("scale=1.5")  # This will make the text 1.5 times larger
+                status_lines.append(timer_text)
         
-        status_lines.append("")
-        status_lines.append(f"🏆 Completed Pomodoros today: {self.total_completed_pomodoros}")
-        status_lines.append(f"🔄 Current cycle: {self.pomodoro_count + 1}/{self.max_pomodoros}")
+        status_lines.append(Text(""))  # Add a blank line
+        status_lines.append(Text(f"🏆 Completed: {self.total_completed_pomodoros} | 🔄 Cycle: {self.pomodoro_count + 1}/{self.max_pomodoros}", style="bold"))
         
-        return "\n".join(self.center_text(line, 120) for line in status_lines)
+        return Text("\n").join(status_lines)
 
     def check_and_reset_pomodoros(self):
         today = date.today()

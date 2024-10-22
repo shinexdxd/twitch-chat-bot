@@ -126,12 +126,12 @@ class TaskManager:
             layout = Layout()
             
             layout.split_column(
-                Layout(name="top_padding", size=2),
+                Layout(name="top_padding", size=1),
                 Layout(name="main_content")
             )
             
             layout["main_content"].split_column(
-                Layout(name="header", size=14),  # Increased from 11 to 14
+                Layout(name="header", size=14),
                 Layout(name="body"),
                 Layout(name="footer", size=7)
             )
@@ -139,6 +139,9 @@ class TaskManager:
                 Layout(name="stats", ratio=3),
                 Layout(name="tasks", ratio=7)
             )
+
+            # Top padding (empty)
+            layout["top_padding"].update("")
 
             # Header
             timer_status = self.get_timer_status()

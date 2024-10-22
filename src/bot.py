@@ -13,7 +13,7 @@ class TwitchBot:
         self.username = os.getenv('TWITCH_BOT_USERNAME')
         self.oauth_token = os.getenv('TWITCH_OAUTH_TOKEN')
         self.channel = os.getenv('TWITCH_CHANNEL')
-        self.admin_user = os.getenv('ADMIN_USER', 'fishermanguybro')  # New line to get admin user
+        self.admin_user = os.getenv('ADMIN_USER')  # Get admin user from .env file
         self.socket = socket.socket()
         self.connected = False
         self.task_manager = TaskManager('twitch_tasks.json')

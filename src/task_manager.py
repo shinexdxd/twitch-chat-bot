@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta
 from collections import Counter
 from textwrap import wrap
 import pygame
-from rich.console import Console
+from rich.console import Console, Group
 from rich.table import Table
 from rich.panel import Panel
 from rich.layout import Layout
@@ -15,6 +15,7 @@ from rich import box
 from rich.padding import Padding
 from rich.align import Align
 from rich.style import Style
+from rich.columns import Columns
 import curses
 from curses import ascii
 from io import StringIO
@@ -142,10 +143,11 @@ class TaskManager:
             # Header
             timer_status = self.get_timer_status()
             layout["main_content"]["header"].update(Panel(
-                Align.center(timer_status),
+                timer_status,
                 title="🍅 Pomodoro 🍅",
                 border_style="bold",
-                padding=(1, 1),
+                padding=(0, 1),
+                expand=True,
                 title_align="center"
             ))
 
@@ -281,21 +283,24 @@ class TaskManager:
         
         status_lines = []
         
+        # Add the current phase text with padding
         if not self.timer_start:
-            status_lines.append(Text("⏸️  No active timer", style="bold"))
+            phase_text = "No active timer"
         else:
-            if self.timer_paused:
-                remaining = self.timer_end - self.timer_pause_start
-            else:
-                remaining = self.timer_end - datetime.now()
-            
-            # Add the current phase text
             phase_text = {
                 'focus': "Focus Time",
                 'short_break': "Short Break",
                 'long_break': "Long Break"
             }.get(self.current_phase, "Timer")
-            status_lines.append(Text(f"⏳ {phase_text}", style="bold cyan"))
+        
+        phase_text_with_padding = Padding(Text(f"⏳ {phase_text}", style="bold cyan"), (1, 0, 1, 0))
+        status_lines.append(phase_text_with_padding)
+        
+        if self.timer_start:
+            if self.timer_paused:
+                remaining = self.timer_end - self.timer_pause_start
+            else:
+                remaining = self.timer_end - datetime.now()
             
             if remaining.total_seconds() <= 0:
                 self.next_phase()
@@ -307,11 +312,15 @@ class TaskManager:
                 big_timer = create_big_text(timer_display)
                 status_lines.append(Text(big_timer, style="bold cyan"))
         
-        # Always add the completion and cycle information
-        status_lines.append(Text(""))  # Add a blank line for spacing
-        status_lines.append(Text(f"🏆 Completed: {self.total_completed_pomodoros} | 🔄 Cycle: {self.pomodoro_count + 1}/{self.max_pomodoros}", style="bold"))
+        # Add the completion and cycle information with padding
+        completion_text = f"🏆 Completed: {self.total_completed_pomodoros} | 🔄 Cycle: {self.pomodoro_count + 1}/{self.max_pomodoros}"
+        completion_text_with_padding = Padding(Text(completion_text, style="bold"), (1, 0, 1, 0))
+        status_lines.append(completion_text_with_padding)
         
-        return Align.center(Text("\n").join(status_lines))
+        # Center all lines individually
+        centered_lines = [Align.center(line) for line in status_lines]
+        
+        return Group(*centered_lines)
 
     def check_and_reset_pomodoros(self):
         today = date.today()
@@ -358,88 +367,78 @@ class TaskManager:
 def get_big_digits():
     return [
         # 0
-        [" ██████╗ ",
-         "██╔═══██╗",
-         "██║   ██║",
-         "██║   ██║",
-         "╚██████╔╝",
-         " ╚═════╝ "],
+        ["█████",
+         "█   █",
+         "█   █",
+         "█   █",
+         "█████"],
         # 1
-        [" ██╗",
-         "███║",
-         "╚██║",
-         " ██║",
-         " ██║",
-         " ╚═╝"],
+        ["  █  ",
+         "  █  ",
+         "  █  ",
+         "  █  ",
+         "  █  "],
         # 2
-        ["██████╗ ",
-         "╚════██╗",
-         " █████╔╝",
-         "██╔═══╝ ",
-         "███████╗",
-         "╚══════╝"],
+        ["█████",
+         "    █",
+         "█████",
+         "█    ",
+         "█████"],
         # 3
-        ["██████╗ ",
-         "╚════██╗",
-         " █████╔╝",
-         " ╚═══██╗",
-         "██████╔╝",
-         "╚═════╝ "],
+        ["█████",
+         "    █",
+         "█████",
+         "    █",
+         "█████"],
         # 4
-        ["██╗  ██╗",
-         "██║  ██║",
-         "███████║",
-         "╚════██║",
-         "     ██║",
-         "     ╚═╝"],
+        ["█   █",
+         "█   █",
+         "█████",
+         "    █",
+         "    █"],
         # 5
-        ["███████╗",
-         "██╔════╝",
-         "███████╗",
-         "╚════██║",
-         "███████║",
-         "╚══════╝"],
+        ["█████",
+         "█    ",
+         "█████",
+         "    █",
+         "█████"],
         # 6
-        [" ██████╗ ",
-         "██╔════╝ ",
-         "████���██╗ ",
-         "██╔═══██╗",
-         "╚██████╔╝",
-         " ╚═════╝ "],
+        ["█████",
+         "█    ",
+         "█████",
+         "█   █",
+         "█████"],
         # 7
-        ["███████╗",
-         "╚═══██║",
-         "    ██╔╝",
-         "   ██╔╝ ",
-         "   ██║  ",
-         "   ╚═╝  "],
+        ["█████",
+         "    █",
+         "    █",
+         "    █",
+         "    █"],
         # 8
-        [" █████╗ ",
-         "██╔══██╗",
-         "╚█████╔╝",
-         "██╔══██╗",
-         "╚█████╔╝",
-         " ╚════╝ "],
+        ["█████",
+         "█   █",
+         "█████",
+         "█   █",
+         "█████"],
         # 9
-        [" █████╗ ",
-         "██╔══██╗",
-         "╚██████║",
-         " ╚═══██║",
-         " █████╔╝",
-         " ╚════╝ "]
+        ["█████",
+         "█   █",
+         "█████",
+         "    █",
+         "█████"]
     ]
 
 def create_big_text(text):
     big_digits = get_big_digits()
-    lines = [""] * 6
+    lines = [""] * 5  # Changed from 6 to 5 lines
     for char in text:
         if char.isdigit():
             digit = big_digits[int(char)]
             for i, line in enumerate(digit):
                 lines[i] += line + "  "  # Add two spaces between digits
         elif char == ":":
-            for i in range(6):
-                if i in (1, 4):
+            for i in range(5):  # Changed from 6 to 5
+                if i in (1, 3):  # Changed from (1, 4) to (1, 3)
                     lines[i] += "██  "
                 else:
                     lines[i] += "    "

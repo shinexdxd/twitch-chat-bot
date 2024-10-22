@@ -83,13 +83,6 @@ This Twitch bot helps manage tasks and provides a Pomodoro timer for streamers a
 - Persistent storage of tasks and user stats in JSON format
 - Admin-only commands for managing the Pomodoro timer, wiping user tasks, and controlling volume
 
-## Technical Details
-
-- Uses Python's `socket` library for Twitch IRC connection
-- Multithreaded design for simultaneous bot operation and task display
-- Utilizes the `rich` library for creating an attractive console interface
-- Implements `pygame` for sound playback and volume control
-
 ## Contributing
 
 This project is under active development. Feel free to submit issues or pull requests if you have suggestions or improvements.

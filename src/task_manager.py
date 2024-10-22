@@ -15,6 +15,9 @@ from rich import box
 from rich.padding import Padding
 from rich.align import Align
 from rich.style import Style
+import curses
+from curses import ascii
+from io import StringIO
 
 class TaskManager:
     def __init__(self, file_path='tasks.json'):
@@ -127,9 +130,9 @@ class TaskManager:
             )
             
             layout["main_content"].split_column(
-                Layout(name="header", size=8),  # Reduced size from default
+                Layout(name="header", size=14),  # Increased from 11 to 14
                 Layout(name="body"),
-                Layout(name="footer", size=7)  # Adjusted size for footer
+                Layout(name="footer", size=7)
             )
             layout["main_content"]["body"].split_row(
                 Layout(name="stats", ratio=3),
@@ -161,15 +164,15 @@ class TaskManager:
             total_completed = sum(stats['total'] for stats in self.user_stats.values())
             stats_panel = Panel(
                 stats_table,
-                title="User Stats",
-                subtitle=f"Total tasks completed (All-time): {total_completed}",  # Updated this line
+                title="Tasks Completed",  # Changed from "User Stats" to "Tasks Completed"
+                subtitle=f"Total tasks completed (All-time): {total_completed}",
                 border_style="bold green"
             )
             layout["main_content"]["body"]["stats"].update(stats_panel)
 
             # Tasks
             tasks_table = Table(show_header=True, header_style="bold cyan", show_lines=False, box=None, padding=(0, 1))
-            tasks_table.add_column("ID", style="bright_yellow", width=10)  # Changed from "bright_black" to "bright_yellow"
+            tasks_table.add_column("ID", style="bright_yellow", width=10)
             tasks_table.add_column("Description", style="bright_white", width=60, no_wrap=True)
             tasks_table.add_column("User", style="bright_blue", width=20)
 
@@ -186,7 +189,7 @@ class TaskManager:
 
             tasks_panel = Panel(
                 tasks_table,
-                title="Today's Incomplete Tasks",
+                title="Today's Open Tasks",  # Changed from "Today's Incomplete Tasks" to "Today's Open Tasks"
                 border_style="bold cyan",
                 title_align="center"
             )
@@ -194,7 +197,7 @@ class TaskManager:
 
             # Footer
             footer_lines = [
-                "🎉 Keep up the great work! 🎉",
+                " Keep up the great work! ",
                 "",  # This adds a blank line
                 "📝 Use !task command to manage your tasks 📝"
             ]
@@ -279,12 +282,20 @@ class TaskManager:
         status_lines = []
         
         if not self.timer_start:
-            status_lines.append(Text("⏸️ No active timer", style="bold"))
+            status_lines.append(Text("⏸️  No active timer", style="bold"))
         else:
             if self.timer_paused:
                 remaining = self.timer_end - self.timer_pause_start
             else:
                 remaining = self.timer_end - datetime.now()
+            
+            # Add the current phase text
+            phase_text = {
+                'focus': "Focus Time",
+                'short_break': "Short Break",
+                'long_break': "Long Break"
+            }.get(self.current_phase, "Timer")
+            status_lines.append(Text(f"⏳ {phase_text}", style="bold cyan"))
             
             if remaining.total_seconds() <= 0:
                 self.next_phase()
@@ -293,15 +304,14 @@ class TaskManager:
             else:
                 minutes, seconds = divmod(int(remaining.total_seconds()), 60)
                 timer_display = f"{minutes:02d}:{seconds:02d}"
-                status_lines.append(Text(f"⏳ {self.current_phase.capitalize()}", style="bold"))
-                timer_text = Text(f"⏱️ {timer_display}", style="bold cyan")
-                timer_text.stylize("scale=1.5")  # This will make the text 1.5 times larger
-                status_lines.append(timer_text)
+                big_timer = create_big_text(timer_display)
+                status_lines.append(Text(big_timer, style="bold cyan"))
         
-        status_lines.append(Text(""))  # Add a blank line
+        # Always add the completion and cycle information
+        status_lines.append(Text(""))  # Add a blank line for spacing
         status_lines.append(Text(f"🏆 Completed: {self.total_completed_pomodoros} | 🔄 Cycle: {self.pomodoro_count + 1}/{self.max_pomodoros}", style="bold"))
         
-        return Text("\n").join(status_lines)
+        return Align.center(Text("\n").join(status_lines))
 
     def check_and_reset_pomodoros(self):
         today = date.today()
@@ -344,3 +354,94 @@ class TaskManager:
             self.long_break_duration = duration
         else:
             raise ValueError("Invalid timer type")
+
+def get_big_digits():
+    return [
+        # 0
+        [" ██████╗ ",
+         "██╔═══██╗",
+         "██║   ██║",
+         "██║   ██║",
+         "╚██████╔╝",
+         " ╚═════╝ "],
+        # 1
+        [" ██╗",
+         "███║",
+         "╚██║",
+         " ██║",
+         " ██║",
+         " ╚═╝"],
+        # 2
+        ["██████╗ ",
+         "╚════██╗",
+         " █████╔╝",
+         "██╔═══╝ ",
+         "███████╗",
+         "╚══════╝"],
+        # 3
+        ["██████╗ ",
+         "╚════██╗",
+         " █████╔╝",
+         " ╚═══██╗",
+         "██████╔╝",
+         "╚═════╝ "],
+        # 4
+        ["██╗  ██╗",
+         "██║  ██║",
+         "███████║",
+         "╚════██║",
+         "     ██║",
+         "     ╚═╝"],
+        # 5
+        ["███████╗",
+         "██╔════╝",
+         "███████╗",
+         "╚════██║",
+         "███████║",
+         "╚══════╝"],
+        # 6
+        [" ██████╗ ",
+         "██╔════╝ ",
+         "████���██╗ ",
+         "██╔═══██╗",
+         "╚██████╔╝",
+         " ╚═════╝ "],
+        # 7
+        ["███████╗",
+         "╚═══██║",
+         "    ██╔╝",
+         "   ██╔╝ ",
+         "   ██║  ",
+         "   ╚═╝  "],
+        # 8
+        [" █████╗ ",
+         "██╔══██╗",
+         "╚█████╔╝",
+         "██╔══██╗",
+         "╚█████╔╝",
+         " ╚════╝ "],
+        # 9
+        [" █████╗ ",
+         "██╔══██╗",
+         "╚██████║",
+         " ╚═══██║",
+         " █████╔╝",
+         " ╚════╝ "]
+    ]
+
+def create_big_text(text):
+    big_digits = get_big_digits()
+    lines = [""] * 6
+    for char in text:
+        if char.isdigit():
+            digit = big_digits[int(char)]
+            for i, line in enumerate(digit):
+                lines[i] += line + "  "  # Add two spaces between digits
+        elif char == ":":
+            for i in range(6):
+                if i in (1, 4):
+                    lines[i] += "██  "
+                else:
+                    lines[i] += "    "
+    return "\n".join(lines)
+

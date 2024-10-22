@@ -1,4 +1,4 @@
-# Twitch Task Manager Bot
+# Twitch Co-Working Bot
 
 This Twitch bot helps manage tasks and provides a Pomodoro timer for streamers and their community. It's designed to increase productivity and engagement during streams.
 

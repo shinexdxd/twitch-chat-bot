@@ -93,6 +93,10 @@ class TwitchBot:
             self.lurkers.clear()  # Clear the lurkers set at the start of a new day
 
     def handle_message(self, username, message):
+        # Check if the user is blocked (except for admin)
+        if username.lower() != self.admin_user.lower() and self.task_manager.is_user_blocked(username):
+            return  # Silently ignore messages from blocked users
+
         if message == '!hi':
             self.send_message('hello')
         elif message == '!lurk':
@@ -104,6 +108,32 @@ class TwitchBot:
                 self.send_message(f"Current lurkers: {lurker_list}")
             else:
                 self.send_message("No one is currently lurking.")
+        elif message.startswith('!block'):
+            if username != self.admin_user:
+                self.send_message(f"@{username} Sorry, only the admin can use this command.")
+                return
+            parts = message.split(maxsplit=1)
+            if len(parts) == 2:
+                user_to_block = parts[1].lower()
+                if self.task_manager.block_user(user_to_block):
+                    self.send_message(f"@{username} User {user_to_block} has been blocked from using bot commands.")
+                else:
+                    self.send_message(f"@{username} User {user_to_block} is already blocked.")
+            else:
+                self.send_message(f"@{username} Usage: !block <username>")
+        elif message.startswith('!unblock'):
+            if username != self.admin_user:
+                self.send_message(f"@{username} Sorry, only the admin can use this command.")
+                return
+            parts = message.split(maxsplit=1)
+            if len(parts) == 2:
+                user_to_unblock = parts[1].lower()
+                if self.task_manager.unblock_user(user_to_unblock):
+                    self.send_message(f"@{username} User {user_to_unblock} has been unblocked and can use bot commands again.")
+                else:
+                    self.send_message(f"@{username} User {user_to_unblock} is not blocked.")
+            else:
+                self.send_message(f"@{username} Usage: !unblock <username>")
         elif message.startswith('!task'):
             parts = message.split(maxsplit=2)
             if len(parts) == 1:

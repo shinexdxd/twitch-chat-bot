@@ -50,6 +50,9 @@ class TaskManager:
         self.set_volume(self.volume)  # Set initial volume
         self.console = Console()
 
+        self.blocked_users_file = 'blocked-users.txt'
+        self.blocked_users = self.load_blocked_users()
+
     def load_data(self):
         if os.path.exists(self.file_path):
             with open(self.file_path, 'r') as f:
@@ -282,9 +285,14 @@ class TaskManager:
         self.timer_pause_start = None
         self.current_phase = 'focus'
         self.pomodoro_count = 0
+        print("Timer stopped. All values reset.")
 
     def get_timer_status(self):
         self.check_and_reset_pomodoros()
+        
+        print(f"Current phase: {self.current_phase}")
+        print(f"Pomodoro count: {self.pomodoro_count}")
+        print(f"Total completed pomodoros: {self.total_completed_pomodoros}")
         
         status_lines = []
         
@@ -335,21 +343,24 @@ class TaskManager:
 
     def next_phase(self):
         if self.current_phase == 'focus':
-            self.pomodoro_count += 1
             self.total_completed_pomodoros += 1
+            self.pomodoro_count += 1
             self.last_pomodoro_date = date.today()
             if self.pomodoro_count >= self.max_pomodoros:
                 self.current_phase = 'long_break'
                 self.pomodoro_count = 0
             else:
                 self.current_phase = 'short_break'
-            # Play sound when focus phase completes
-            self.complete_sound.play()
-        else:
+        else:  # It's a break phase
             self.current_phase = 'focus'
-            # Play sound when break phase completes
-            self.complete_sound.play()
+        
+        # Play sound when phase completes
+        self.complete_sound.play()
         self.start_timer()
+
+        print(f"Phase changed to: {self.current_phase}")
+        print(f"Total completed pomodoros: {self.total_completed_pomodoros}")
+        print(f"Current pomodoro count: {self.pomodoro_count}")
 
     def get_duration(self):
         if self.current_phase == 'focus':
@@ -375,6 +386,36 @@ class TaskManager:
 
     def get_volume(self):
         return int(self.volume * 100)  # Return volume as a percentage
+
+    def load_blocked_users(self):
+        if os.path.exists(self.blocked_users_file):
+            with open(self.blocked_users_file, 'r') as f:
+                return set(line.strip().lower() for line in f if line.strip())
+        return set()
+
+    def save_blocked_users(self):
+        with open(self.blocked_users_file, 'w') as f:
+            for user in self.blocked_users:
+                f.write(f"{user}\n")
+
+    def block_user(self, username):
+        username = username.lower()
+        if username not in self.blocked_users:
+            self.blocked_users.add(username)
+            self.save_blocked_users()
+            return True
+        return False
+
+    def unblock_user(self, username):
+        username = username.lower()
+        if username in self.blocked_users:
+            self.blocked_users.remove(username)
+            self.save_blocked_users()
+            return True
+        return False
+
+    def is_user_blocked(self, username):
+        return username.lower() in self.blocked_users
 
 def get_big_digits():
     return [

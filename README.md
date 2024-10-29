@@ -27,8 +27,7 @@ This Twitch bot helps manage tasks and provides a Pomodoro timer for streamers a
 
 4. Run the bot:
    ```
-   cd src   
-   python bot.py
+   python src/bot.py
    ```
 
 ## Commands
@@ -57,6 +56,11 @@ This Twitch bot helps manage tasks and provides a Pomodoro timer for streamers a
 - `!volume`: Display current volume level
 - `!volume <0-100>`: Set the volume level (0-100%)
 
+### User Management (Admin only)
+
+- `!block <username>`: Block a user from using bot commands
+- `!unblock <username>`: Unblock a user to allow bot command usage
+
 ### Other Commands
 
 - `!hi`: Bot responds with a greeting
@@ -71,6 +75,7 @@ This Twitch bot helps manage tasks and provides a Pomodoro timer for streamers a
 
 - Task management system with unique IDs for each task
 - Pomodoro timer with customizable durations for focus, short breaks, and long breaks
+- User blocking system to prevent misuse
 - Daily stats reset and task cleanup at midnight
 - Lurker tracking with daily reset
 - Visual task dashboard displayed in the console, including:
@@ -80,8 +85,15 @@ This Twitch bot helps manage tasks and provides a Pomodoro timer for streamers a
 - Sound notifications for completed Pomodoro sessions
 - Volume control for sound notifications
 - Automatic progression through Pomodoro cycles (focus -> short break -> focus -> ... -> long break)
-- Persistent storage of tasks and user stats in JSON format
-- Admin-only commands for managing the Pomodoro timer, wiping user tasks, and controlling volume
+- Persistent storage for:
+  - Tasks and user stats (JSON)
+  - Timer settings (config file)
+  - Blocked users list
+- Admin-only commands for:
+  - Managing the Pomodoro timer
+  - Wiping user tasks
+  - Controlling notification volume
+  - Blocking/unblocking users
 
 ## Contributing
 

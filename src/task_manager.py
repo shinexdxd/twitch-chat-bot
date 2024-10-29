@@ -19,40 +19,66 @@ from rich.columns import Columns
 import curses
 from curses import ascii
 from io import StringIO
+import configparser
 
 class TaskManager:
     def __init__(self, file_path='tasks.json', phase_change_callback=None):
+        # Load config
+        self.config = configparser.ConfigParser()
+        self.config_file = 'timer.cfg'
+        
+        # Set defaults in case config file doesn't exist
+        default_volume = 40
+        self.focus_duration = 30
+        self.short_break_duration = 10
+        self.long_break_duration = 15
+        
+        # Try to load config file
+        if os.path.exists(self.config_file):
+            self.config.read(self.config_file)
+            default_volume = self.config.getint('Timer', 'volume', fallback=40)
+            self.focus_duration = self.config.getint('Timer', 'focus_duration', fallback=30)
+            self.short_break_duration = self.config.getint('Timer', 'short_break_duration', fallback=10)
+            self.long_break_duration = self.config.getint('Timer', 'long_break_duration', fallback=15)
+        else:
+            # Create default config file if it doesn't exist
+            self.config['Timer'] = {
+                'volume': '40',
+                'focus_duration': '30',
+                'short_break_duration': '10',
+                'long_break_duration': '15'
+            }
+            with open(self.config_file, 'w') as configfile:
+                self.config.write(configfile)
+
+        # Initialize pygame mixer for sound playback
+        pygame.mixer.init()
+        self.complete_sound = pygame.mixer.Sound(os.path.join('sounds', 'complete.mp3'))
+        self.volume = default_volume / 100  # Convert percentage to float
+        self.set_volume(self.volume)
+
+        # Rest of your initialization code...
         self.file_path = file_path
         self.tasks = {}
         self.user_stats = {}
         self.load_data()
         self.clean_old_tasks()
         
-        # Pomodoro timer attributes
+        # Timer attributes
         self.timer_start = None
         self.timer_end = None
         self.timer_type = None
         self.timer_paused = False
         self.timer_pause_start = None
-        self.focus_duration = 30  # Default focus time: 30 minutes
-        self.short_break_duration = 10  # Default short break: 10 minutes
-        self.long_break_duration = 15  # Default long break: 15 minutes
         self.current_phase = 'focus'
         self.pomodoro_count = 0
         self.max_pomodoros = 4
-        self.total_completed_pomodoros = 0  # New attribute to track total completed pomodoros
-        self.last_pomodoro_date = date.today()  # New attribute to track the date of the last pomodoro
+        self.total_completed_pomodoros = 0
+        self.last_pomodoro_date = date.today()
 
-        # Initialize pygame mixer for sound playback
-        pygame.mixer.init()
-        self.complete_sound = pygame.mixer.Sound(os.path.join('sounds', 'complete.mp3'))
-        self.volume = 1.0  # Default volume (100%)
-        self.set_volume(self.volume)  # Set initial volume
         self.console = Console()
-
         self.blocked_users_file = 'blocked-users.txt'
         self.blocked_users = self.load_blocked_users()
-
         self.phase_change_callback = phase_change_callback
 
     def load_data(self):
@@ -367,16 +393,31 @@ class TaskManager:
     def set_timer_duration(self, timer_type, duration):
         if timer_type == 'focus':
             self.focus_duration = duration
+            self.config['Timer']['focus_duration'] = str(duration)
         elif timer_type == 'short':
             self.short_break_duration = duration
+            self.config['Timer']['short_break_duration'] = str(duration)
         elif timer_type == 'long':
             self.long_break_duration = duration
+            self.config['Timer']['long_break_duration'] = str(duration)
         else:
             raise ValueError("Invalid timer type")
+        
+        # Save the updated config to file
+        with open(self.config_file, 'w') as configfile:
+            self.config.write(configfile)
 
     def set_volume(self, volume):
         self.volume = max(0.0, min(1.0, volume))  # Ensure volume is between 0 and 1
         self.complete_sound.set_volume(self.volume)
+        
+        # Update config with new volume (store as percentage)
+        volume_percentage = int(self.volume * 100)
+        self.config['Timer']['volume'] = str(volume_percentage)
+        
+        # Save the updated config to file
+        with open(self.config_file, 'w') as configfile:
+            self.config.write(configfile)
 
     def get_volume(self):
         return int(self.volume * 100)  # Return volume as a percentage

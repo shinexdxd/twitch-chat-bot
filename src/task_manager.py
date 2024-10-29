@@ -21,7 +21,7 @@ from curses import ascii
 from io import StringIO
 
 class TaskManager:
-    def __init__(self, file_path='tasks.json'):
+    def __init__(self, file_path='tasks.json', phase_change_callback=None):
         self.file_path = file_path
         self.tasks = {}
         self.user_stats = {}
@@ -52,6 +52,8 @@ class TaskManager:
 
         self.blocked_users_file = 'blocked-users.txt'
         self.blocked_users = self.load_blocked_users()
+
+        self.phase_change_callback = phase_change_callback
 
     def load_data(self):
         if os.path.exists(self.file_path):
@@ -285,14 +287,9 @@ class TaskManager:
         self.timer_pause_start = None
         self.current_phase = 'focus'
         self.pomodoro_count = 0
-        print("Timer stopped. All values reset.")
 
     def get_timer_status(self):
         self.check_and_reset_pomodoros()
-        
-        print(f"Current phase: {self.current_phase}")
-        print(f"Pomodoro count: {self.pomodoro_count}")
-        print(f"Total completed pomodoros: {self.total_completed_pomodoros}")
         
         status_lines = []
         
@@ -323,14 +320,13 @@ class TaskManager:
                 minutes, seconds = divmod(int(remaining.total_seconds()), 60)
                 timer_display = f"{minutes:02d}:{seconds:02d}"
                 big_timer = create_big_text(timer_display)
-                status_lines.append(Text(big_timer, style="bold cyan"))
+                timer_color = "bold green" if self.current_phase == 'focus' else "bold yellow"
+                status_lines.append(Text(big_timer, style=timer_color))
         
-        # Add the completion and cycle information with padding
         completion_text = f"🏆 Completed: {self.total_completed_pomodoros} | 🔄 Cycle: {self.pomodoro_count + 1}/{self.max_pomodoros}"
         completion_text_with_padding = Padding(Text(completion_text, style="bold"), (1, 0, 1, 0))
         status_lines.append(completion_text_with_padding)
         
-        # Center all lines individually
         centered_lines = [Align.center(line) for line in status_lines]
         
         return Group(*centered_lines)
@@ -354,13 +350,11 @@ class TaskManager:
         else:  # It's a break phase
             self.current_phase = 'focus'
         
-        # Play sound when phase completes
         self.complete_sound.play()
         self.start_timer()
 
-        print(f"Phase changed to: {self.current_phase}")
-        print(f"Total completed pomodoros: {self.total_completed_pomodoros}")
-        print(f"Current pomodoro count: {self.pomodoro_count}")
+        if self.phase_change_callback:
+            self.phase_change_callback(self.current_phase)
 
     def get_duration(self):
         if self.current_phase == 'focus':
@@ -416,6 +410,18 @@ class TaskManager:
 
     def is_user_blocked(self, username):
         return username.lower() in self.blocked_users
+
+    def pause_timer(self):
+        if self.timer_start and not self.timer_paused:
+            self.timer_paused = True
+            self.timer_pause_start = datetime.now()
+
+    def resume_timer(self):
+        if self.timer_paused:
+            pause_duration = datetime.now() - self.timer_pause_start
+            self.timer_end += pause_duration
+            self.timer_paused = False
+            self.timer_pause_start = None
 
 def get_big_digits():
     return [

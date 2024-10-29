@@ -16,7 +16,7 @@ class TwitchBot:
         self.admin_user = os.getenv('ADMIN_USER')  # Get admin user from .env file
         self.socket = socket.socket()
         self.connected = False
-        self.task_manager = TaskManager('twitch_tasks.json')
+        self.task_manager = TaskManager('twitch_tasks.json', self.on_phase_change)
         self.lurkers = set()  # New set to store lurkers
 
     def connect(self):
@@ -141,8 +141,7 @@ class TwitchBot:
                 help_message = ("Task commands: !task add <description> | !task remove <id> | "
                                 "!task complete <id> | !task list | !task stats")
                 self.send_message(f"@{username} {help_message}")
-            elif len(parts) < 2:
-                return
+                return  # Add return here to prevent further processing
             
             command = parts[1]
             if command == 'add':
@@ -251,6 +250,16 @@ class TwitchBot:
         else:
             # Handle other commands or messages
             pass  # Add this line to handle the case when no specific command is matched
+
+    def on_phase_change(self, phase):
+        phase_messages = {
+            'focus': "-----> FOCUS TIME <-----",
+            'short_break': "-----> SHORT BREAK <-----",
+            'long_break': "-----> LONG BREAK <-----"
+        }
+        message = phase_messages.get(phase, "")
+        if message:
+            self.send_message(message)
 
 if __name__ == "__main__":
     bot = TwitchBot()

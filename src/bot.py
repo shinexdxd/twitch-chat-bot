@@ -7,6 +7,82 @@ import threading
 import time
 from datetime import datetime, date, timedelta
 
+# ─── Flask imports & setup ────────────────────────────────────────────────────
+from flask import Flask, jsonify, send_from_directory
+from threading import Thread
+
+# Tell Flask to look for static files in ./public
+app = Flask(__name__, static_folder="public", static_url_path="")
+
+# We keep a global reference to the bot so we can query its TaskManager
+bot = None  # will be set in __main__
+
+
+def get_timer_data():
+    """
+    Return a dict with:
+      - remaining_seconds   (integer)
+      - phase               (string: "focus", "short_break", or "long_break", or "" if no timer)
+      - pomodoro_count      (int, how many focus sessions have completed so far in this cycle)
+      - max_pomodoros       (int, usually 4)
+      - total_completed     (int, total number of pomodoros completed today)
+    """
+    tm = bot.task_manager
+    # If no timer has ever been started, tm.timer_start will be None
+    if not tm.timer_start:
+        return {
+            "remaining_seconds": 0,
+            "phase": "",
+            "pomodoro_count": tm.pomodoro_count,
+            "max_pomodoros": tm.max_pomodoros,
+            "total_completed": tm.total_completed_pomodoros
+        }
+
+    # If timer is paused, compute remaining as (timer_end - pause_start)
+    if tm.timer_paused and tm.timer_pause_start:
+        rem_delta = tm.timer_end - tm.timer_pause_start
+    else:
+        rem_delta = tm.timer_end - datetime.now()
+
+    rem_secs = int(rem_delta.total_seconds())
+    if rem_secs < 0:
+        rem_secs = 0
+
+    return {
+        "remaining_seconds": rem_secs,
+        "phase": tm.current_phase,             # "focus", "short_break", or "long_break"
+        "pomodoro_count": tm.pomodoro_count,    # e.g. how many focus sessions done so far
+        "max_pomodoros": tm.max_pomodoros,
+        "total_completed": tm.total_completed_pomodoros
+    }
+
+
+@app.route("/timer")
+def timer_json():
+    """
+    Legacy endpoint if you only want remaining seconds.
+    """
+    data = get_timer_data()
+    return jsonify({"remaining": data["remaining_seconds"]})
+
+
+@app.route("/status")
+def status_json():
+    """
+    A richer endpoint that returns everything the console version prints.
+    """
+    return jsonify(get_timer_data())
+
+@app.route("/twitch_tasks.json")
+def serve_tasks_file():
+    # __file__ is bot.py; os.path.dirname(__file__) is the folder containing bot.py
+    folder = os.path.dirname(__file__)
+    return send_from_directory(folder, "twitch_tasks.json")
+
+def run_flask():
+    # Turn off reloader so we don’t spawn two threads
+    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+
 class TwitchBot:
     def __init__(self):
         load_dotenv()
@@ -260,7 +336,15 @@ class TwitchBot:
         message = phase_messages.get(phase, "")
         if message:
             self.send_message(message)
-
+            
 if __name__ == "__main__":
+    # 1) Instantiate the bot first, so get_timer_data() can see it
     bot = TwitchBot()
+
+    # 2) Start Flask in a separate daemon thread
+    flask_thread = Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    print("Flask server running on http://localhost:5000/timer and /status")
+
+    # 3) Now launch the Twitch bot’s main loop
     bot.run()

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pomodoro + Tasks + Chat Overlay</title>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      overflow: hidden;
+      height: 100vh;
+      font-family: 'VT323', monospace;
+      color: #ffffff;
+    }
+
+    /* Full-screen container */
+    #container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ─────── Top: Phase ─────── */
+    #phase {
+      position: absolute;
+      top: 2vh;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 3vh;
+      font-family: 'Comic Neue', cursive;
+      color: #ff69b4;
+      text-shadow:
+        -1px -1px 0 #000,
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000;
+      white-space: nowrap;
+    }
+
+    /* ─────── Top Left: Twitch Chat ─────── */
+    #chat {
+      position: absolute;
+      top: 2vh;
+      left: 2vw;
+      width: 25vw;
+      max-height: 60vh;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid #ff69b4;
+      border-radius: 8px;
+      overflow-y: auto;
+      padding: 1vh 1vw;
+      scrollbar-width: none;
+    }
+    #chat ul { list-style: none; margin: 0; padding: 0; }
+    #chat li {
+      display: flex;
+      align-items: baseline;
+      margin-bottom: 0.8vh;
+    }
+    #chat li:last-child { margin-bottom: 0; }
+    #chat .username {
+      font-family: 'Comic Neue', cursive;
+      font-size: 2.2vh;
+      color: #ff69b4;
+      text-shadow:
+        -1px -1px 0 #000,
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000;
+      margin-right: 0.5vw;
+      white-space: nowrap;
+    }
+    #chat .message {
+      font-family: 'VT323', monospace;
+      font-size: 2vh;
+      color: #ffffff;
+      white-space: normal;
+      word-break: break-word;
+    }
+    #chat::-webkit-scrollbar { width: 0px; }
+    #chat::-webkit-scrollbar-track { background: rgba(255,255,255,0); }
+
+    /* ─────── Top Right: Info Panel ─────── */
+    #info {
+      position: absolute;
+      top: 2vh;
+      right: 2vw;
+      width: 20vw;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid #ff69b4;
+      border-radius: 8px;
+      padding: 1vh 1vw;
+    }
+    #info .info-text {
+      font-family: 'Comic Neue', cursive;
+      font-size: 2.5vh;
+      color: #ff69b4;
+      text-shadow:
+        -1px -1px 0 #000,
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000;
+      text-align: center;
+      white-space: normal;
+    }
+
+/* ─────── Top Right 2: Silent Mode Panel ─────── */
+#silent {
+  position: absolute;
+  top: 8vh;           /* slightly below the first info panel */
+  right: 2vw;
+  width: 20vw;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #ff69b4;
+  border-radius: 8px;
+  padding: 1vh 1vw;
+}
+#silent .silent-text {
+  font-family: 'Comic Neue', cursive;
+  font-size: 2.5vh;
+  color: #ff69b4;
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+  text-align: center;
+  white-space: normal;
+}
+
+
+    /* ─────── Middle: Big Timer ─────── */
+    #timer {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 20vh;
+      line-height: 20vh;
+      font-family: 'VT323', monospace;
+      color: #00ff00;
+      text-shadow:
+        -1px -1px 0 #000,
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000;
+      white-space: nowrap;
+    }
+
+    /* ─────── Bottom Left: Footer (Completed + Cycle) ─────── */
+    #footer {
+      position: absolute;
+      bottom: 2vh;
+      left: 2vw;
+      font-size: 3vh;
+      font-family: 'Comic Neue', cursive;
+      color: #1e90ff;
+      text-shadow:
+        -1px -1px 0 #000,
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000;
+      white-space: nowrap;
+    }
+
+    /* ─────── Bottom Right: Tasks List ─────── */
+    #tasks {
+      position: absolute;
+      bottom: 2vh;
+      right: 2vw;
+      width: 30vw;
+      max-height: 40vh;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid #ff69b4;
+      border-radius: 8px;
+      overflow-y: auto;
+      padding: 1vh 1vw;
+    }
+    .task-item {
+      font-size: 2.2vh;
+      font-family: 'Comic Neue', cursive;
+      margin-bottom: 0.8vh;
+      color: #ffffff;
+      text-shadow:
+        -1px -1px 0 #000,
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000;
+      white-space: nowrap;
+    }
+    .task-item.completed {
+      color: #aaaaaa;
+    }
+    .task-item.completed .item-text {
+      text-decoration: line-through;
+    }
+    .task-item.completed .checkmark {
+      text-decoration: none;
+    }
+    .task-item:last-child { margin-bottom: 0; }
+    #tasks::-webkit-scrollbar { width: 0.8vw; }
+    #tasks::-webkit-scrollbar-thumb { background: #ff69b4; border-radius: 0.4vw; }
+    #tasks::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <!-- Top: Phase Line -->
+    <div id="phase">no active timer</div>
+
+    <!-- Top Left: Twitch Chat -->
+    <div id="chat">
+      <ul></ul>
+    </div>
+
+    <!-- Top Right: Info Panel -->
+    <div id="info">
+      <div class="info-text">type <strong>!task</strong> in chat to participate</div>
+    </div>
+<!-- Top Right 2: Silent Mode Panel -->
+<div id="silent">
+  <div class="silent-text">silent during focus times 🤐</div>
+</div>
+
+    <!-- Middle: Big MM:SS Timer -->
+    <div id="timer">00:00</div>
+
+    <!-- Bottom Left: Completed & Cycle -->
+    <div id="footer">🏆 completed: 0  |  🔄 cycle: 1/4</div>
+
+    <!-- Bottom Right: Today's Open Tasks -->
+    <div id="tasks">
+      <div class="task-item" style="font-style: italic; color: #888888;">
+        no tasks loaded.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ─── Twitch Chat Setup ──────────────────────────────────────────────────
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+    const chatList = document.querySelector("#chat > ul");
+    ComfyJS.onChat = (user, message, flags, self, extra) => {
+      const li = document.createElement("li");
+      const uSpan = document.createElement("span");
+      uSpan.className = "username";
+      uSpan.innerHTML = escapeHtml(user + ":");
+      const mSpan = document.createElement("span");
+      mSpan.className = "message";
+      mSpan.innerHTML = escapeHtml(message);
+      li.append(uSpan, mSpan);
+      chatList.append(li);
+      const chatDiv = document.getElementById("chat");
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+      if (chatList.children.length > 30) {
+        chatList.removeChild(chatList.firstChild);
+      }
+    };
+    ComfyJS.Init("shinexdxd");
+
+    // ─── Pomodoro Timer Functions with rAF ─────────────────────────────────
+    let endTimestamp = null;
+    let currentPhase = "";
+
+    function formatMMSS(totalSeconds) {
+      const m = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
+      const s = (totalSeconds % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+    function phaseDisplayText(phase) {
+      switch (phase) {
+        case "focus":       return "⏳ Focus Time";
+        case "short_break": return "⏳ Short Break";
+        case "long_break":  return "⏳ Long Break";
+        default:            return "No active timer";
+      }
+    }
+
+    // Fetch status and set new endTimestamp
+    async function fetchStatus() {
+      try {
+        const res = await fetch("/status");
+        if (!res.ok) throw new Error(`HTTP /status ${res.status}`);
+        const stats = await res.json();
+        const nowMs = Date.now();
+        const remMs = stats.remaining_seconds * 1000;
+        endTimestamp = nowMs + remMs;
+        currentPhase = stats.phase;
+        const nextCycle = Math.min(stats.pomodoro_count + 1, stats.max_pomodoros);
+        document.getElementById("footer").innerText =
+          `🏆 Completed: ${stats.total_completed}  |  🔄 Cycle: ${nextCycle}/${stats.max_pomodoros}`;
+      } catch (err) {
+        console.error("ERROR fetching status:", err);
+      }
+      setTimeout(fetchStatus, 5000);
+    }
+
+    function drawTimer() {
+      const now = Date.now();
+      let remMs = (endTimestamp || now) - now;
+      if (remMs < 0) remMs = 0;
+      const remSec = Math.floor(remMs / 1000);
+      document.getElementById("phase").innerText = phaseDisplayText(currentPhase);
+      const timerEl = document.getElementById("timer");
+      timerEl.innerText = formatMMSS(remSec);
+      if (currentPhase === "focus") timerEl.style.color = "magenta";
+      else if (currentPhase === "short_break" || currentPhase === "long_break") timerEl.style.color = "#ffff00";
+      else timerEl.style.color = "#888888";
+      requestAnimationFrame(drawTimer);
+    }
+
+async function refreshTasks() {
+  try {
+    const tsRes = await fetch("/twitch_tasks.json");
+    if (!tsRes.ok) throw new Error(`HTTP twitch_tasks.json ${tsRes.status}`);
+    const allData = await tsRes.json();
+    const tasksObj = allData.tasks || {};
+
+    const todayDate = new Date().toISOString().slice(0, 10);
+    const openTasks = [];
+    const doneTasks = [];
+
+    // 1) Separate today’s tasks into “open” and “done”
+    for (const [id, task] of Object.entries(tasksObj)) {
+      if (task.date !== todayDate) continue;
+      if (task.completed) {
+        doneTasks.push({ id, description: task.description, user: task.user });
+      } else {
+        openTasks.push({ id, description: task.description, user: task.user });
+      }
+    }
+
+    // 2) Slice so that we only keep up to 30 total items,
+    //    prioritizing openTasks first, then doneTasks.
+    const DISPLAY_LIMIT = 30;
+
+    // take the first 30 openTasks (or fewer, if there aren’t that many)
+    const visibleOpen = openTasks.slice(0, DISPLAY_LIMIT);
+    const slotsLeft = Math.max(0, DISPLAY_LIMIT - visibleOpen.length);
+
+    // take as many doneTasks as will fit into the remaining slots
+    const visibleDone = doneTasks.slice(0, slotsLeft);
+
+    // 3) Render only visibleOpen (in normal style) + visibleDone (with checkmark)
+    const tasksContainer = document.getElementById("tasks");
+    tasksContainer.innerHTML = "";
+
+    if (visibleOpen.length === 0 && visibleDone.length === 0) {
+      // if nothing to show at all:
+      const placeholder = document.createElement("div");
+      placeholder.className = "task-item";
+      placeholder.style.fontStyle = "italic";
+      placeholder.style.color = "#888888";
+      placeholder.innerText = "no tasks for today.";
+      tasksContainer.appendChild(placeholder);
+    } else {
+      // 3a) Append all visible open tasks
+      for (const t of visibleOpen) {
+        const line = document.createElement("div");
+        line.className = "task-item";
+        line.innerText = `${t.user}: ${t.description} (${t.id})`;
+        tasksContainer.appendChild(line);
+      }
+
+      // 3b) Append all visible done tasks (with ✅)
+      for (const t of visibleDone) {
+        const line = document.createElement("div");
+        line.className = "task-item completed";
+
+        const ck = document.createElement("span");
+        ck.className = "checkmark";
+        ck.innerText = "✅ ";
+
+        const txt = document.createElement("span");
+        txt.className = "item-text";
+        txt.innerText = `${t.user}: ${t.description} (${t.id})`;
+
+        line.append(ck, txt);
+        tasksContainer.appendChild(line);
+      }
+    }
+
+  } catch (err) {
+    console.error("ERROR in refreshTasks():", err);
+  }
+
+  setTimeout(refreshTasks, 5000);
+}
+
+
+    // Initialize loops
+    fetchStatus();
+    drawTimer();
+    refreshTasks();
+  </script>
+</body>
+</html>

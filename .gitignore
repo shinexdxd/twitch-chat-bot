@@ -1,6 +1,7 @@
 # custom adds
 twitch_tasks.json
 pyenv/
+sounds/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -6,6 +6,75 @@ from task_manager import TaskManager
 import threading
 import time
 from datetime import datetime, date, timedelta
+from flask import Flask, jsonify, send_from_directory, render_template
+from task_manager import TaskManager
+
+# ─── Flask App Setup ─────────────────────────────────────────────────────────
+app = Flask(__name__)
+
+# These constants should mirror whatever TaskManager uses internally, if needed:
+# (Alternatively, TaskManager may expose these via a get_status() method.)
+MAX_POMODOROS = 4  # only used if TaskManager doesn't expose this
+
+@app.route("/")
+def index():
+    """
+    Serve the timer.html file from the templates/ directory.
+    Make sure you have a folder named `templates/` alongside this Python file,
+    and inside it place the exact `timer.html` you built previously.
+    """
+    return render_template("overlay.html")
+
+
+@app.route("/status")
+def status():
+    """
+    Called by the front‐end every few seconds. Returns JSON with:
+      - remaining_seconds: how many seconds left in the current phase
+      - phase:            one of "focus", "short_break", "long_break"
+      - pomodoro_count:   how many focus sessions completed in this cycle
+      - max_pomodoros:    total allowed before a long break
+      - total_completed:  cumulative count of focus sessions
+    We assume TaskManager exposes a method get_status() returning exactly that dict.
+    If your TaskManager API is different, adjust accordingly.
+    """
+    # Fetch the current status directly from the TaskManager instance
+    # (the TwitchBot.__init__ will create twitch_bot.task_manager before Flask starts.)
+    tm = twitch_bot.task_manager
+
+    try:
+        # If TaskManager has a get_status() method, use it:
+        status_data = tm.get_status()
+    except AttributeError:
+        # Fallback: assume TaskManager exposes attributes / methods manually:
+        phase = tm.current_phase            # e.g. "focus" / "short_break" / "long_break"
+        remaining = tm.get_remaining_seconds()  # leftover seconds in this phase
+        pom_count = tm.pomodoro_count       # how many focus sessions done in this cycle
+        total_done = tm.total_completed     # cumulative count
+        status_data = {
+            "remaining_seconds": remaining,
+            "phase":             phase,
+            "pomodoro_count":    pom_count,
+            "max_pomodoros":     MAX_POMODOROS,
+            "total_completed":   total_done
+        }
+
+    return jsonify(status_data)
+
+
+@app.route("/twitch_tasks.json")
+def tasks_json():
+    """
+    Serve the JSON file containing tasks. Place `twitch_tasks.json`
+    in the same directory as this script. If it doesn’t exist yet,
+    return an empty structure so the front‐end never breaks.
+    """
+    file_path = os.path.join(app.root_path, "twitch_tasks.json")
+    if not os.path.exists(file_path):
+        return jsonify({"tasks": {}, "user_stats": {}})
+    return send_from_directory(app.root_path, "twitch_tasks.json")
+
+
 
 class TwitchBot:
     def __init__(self):
@@ -261,6 +330,17 @@ class TwitchBot:
         if message:
             self.send_message(message)
 
+twitch_bot = TwitchBot()
+
+def start_flask():
+    # disable the reloader so Flask doesn’t try to set up signal handlers here
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+
+
 if __name__ == "__main__":
-    bot = TwitchBot()
-    bot.run()
+    # 1) Start the Flask server in a separate daemon thread
+    flask_thread = threading.Thread(target=start_flask, daemon=True)
+    flask_thread.start()
+
+    # 2) Then start the TwitchBot loop in the main thread (blocking)
+    twitch_bot.run()

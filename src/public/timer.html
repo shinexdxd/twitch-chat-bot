@@ -323,14 +323,11 @@ async function refreshTasks() {
     if (!tsRes.ok) throw new Error(`HTTP twitch_tasks.json ${tsRes.status}`);
     const allData = await tsRes.json();
     const tasksObj = allData.tasks || {};
-
-    const todayDate = new Date().toISOString().slice(0, 10);
     const openTasks = [];
     const doneTasks = [];
 
     // 1) Separate today’s tasks into “open” and “done”
     for (const [id, task] of Object.entries(tasksObj)) {
-      if (task.date !== todayDate) continue;
       if (task.completed) {
         doneTasks.push({ id, description: task.description, user: task.user });
       } else {

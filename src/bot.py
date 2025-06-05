@@ -177,24 +177,24 @@ class TwitchBot:
             self.send_message('hello')
         elif message == '!lurk':
             self.lurkers.add(username)
-            self.send_message(f"Thanks for lurking {username}!")
+            self.send_message(f"thanks for lurking {username}!")
         elif message == '!lurkers':
             if self.lurkers:
                 lurker_list = ", ".join(self.lurkers)
-                self.send_message(f"Current lurkers: {lurker_list}")
+                self.send_message(f"current lurkers: {lurker_list}")
             else:
-                self.send_message("No one is currently lurking.")
+                self.send_message("no one is currently lurking.")
         elif message.startswith('!block'):
             if username != self.admin_user:
-                self.send_message(f"@{username} Sorry, only the admin can use this command.")
+                self.send_message(f"@{username} sorry, only the admin can use this command.")
                 return
             parts = message.split(maxsplit=1)
             if len(parts) == 2:
                 user_to_block = parts[1].lower()
                 if self.task_manager.block_user(user_to_block):
-                    self.send_message(f"@{username} User {user_to_block} has been blocked from using bot commands.")
+                    self.send_message(f"@{username} user {user_to_block} has been blocked from using bot commands.")
                 else:
-                    self.send_message(f"@{username} User {user_to_block} is already blocked.")
+                    self.send_message(f"@{username} user {user_to_block} is already blocked.")
             else:
                 self.send_message(f"@{username} Usage: !block <username>")
         elif message.startswith('!unblock'):
